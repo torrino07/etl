@@ -1,0 +1,6 @@
+/js/node_modules/
+marketdata
+output_parquet
+target
+.venv
+__pycache__
