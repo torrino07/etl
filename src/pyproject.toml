@@ -8,6 +8,5 @@ dependencies = [
     "pandas>=2.2.3",
     "pyarrow>=19.0.1",
     "fastparquet>=2024.11.0",
-    "numpy>=2.2.4",
-    "s3fs>=2025.3.2"
+    "boto3>=1.37.28"
 ]
