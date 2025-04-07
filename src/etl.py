@@ -70,7 +70,7 @@ def clean_up(path):
     subprocess.run(["rm", "-rf", path])
     print(f"Deleted: {path}")
     
-def run(channel, local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX):
+def run(channel, local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR):
     
     aws_sync_s3(local_dir, host, prefix)
     paths = sorted((Path(local_dir + f"/{channel}").rglob("*.binlog")))
@@ -98,10 +98,10 @@ def run(channel, local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX):
         
     if all_dfs:
         dfs = pandas.concat(all_dfs, ignore_index=True)
-        write_parquet_append(dfs, host=HOST, output_root=OUTPUT_DIR)
+        write_parquet_append(dfs, host, output_root)
 
 
 if __name__ == "__main__":
-    run(channel="trades", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX)
-    run(channel="oderbook", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX)
+    run(channel="trades", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR)
+    run(channel="oderbook", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR)
     clean_up(path=LOCAL_DIR)
