@@ -4,3 +4,4 @@ output_parquet
 target
 .venv
 __pycache__
+binlogs
