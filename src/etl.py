@@ -1,35 +1,15 @@
-import os, json, struct, pandas
-import subprocess
+import os, json, struct, pandas, boto3
 from pathlib import Path
 from utils.DataParser import normalize_orderbook, normalize_trades
 
-LOCAL_DIR = "binlogs"
-PREFIX = "binlogs"
-AWS_REGION = "us-east-1"
-HOST = "marketdata001-dev"
-OUTPUT_DIR = "parquet"
-LEVELS = 10
+def aws_sync_s3():
+    response = os.system(f"aws s3 sync s3://{S3_BUCKET}/binlogs/staging ./binlogs --exact-timestamps --region {AWS_REGION}")
+    print("Sync successful" if response == 0 else "Sync failed")
 
-def aws_sync_s3(local_dir, host, prefix):
-    os.environ["AWS_DEFAULT_REGION"] = AWS_REGION
-    result = subprocess.run(
-        [
-            "aws",
-            "s3",
-            "sync",
-            f"s3://{host}/{prefix}",
-            local_dir,
-            "--exact-timestamps",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
-        print("Sync successful")
-    else:
-        print("Sync failed")
-        print(result.stderr)
-
+def aws_mv_s3():
+    response = os.system(f"aws s3 mv s3://{S3_BUCKET}/binlogs/staging s3://{S3_BUCKET}/binlogs/processed --recursive --metadata-directive REPLACE --metadata '{{\"processed\":\"true\"}}'  --region {AWS_REGION}")
+    print("Sync successful" if response == 0 else "Mv failed")
+    
 def parse_metadata(path):
     parts = Path(path).parts
     return {
@@ -56,32 +36,31 @@ def load_snapshots(path):
             snapshots.append(message)
     return snapshots
 
-def write_parquet_append(df, host, output_root):
+def write_parquet_append(df):
     df.to_parquet(
-        f"s3://{host}/{output_root}", 
+        f"s3://{S3_BUCKET}/parquet", 
         partition_cols=["channel", "exchange", "market", "symbol", "date", "hour", "minute"],
         index=False,
         compression="snappy",
         engine="pyarrow"
         )
-    print(f"Appended file: {output_root}")
 
-def clean_up(path):
-    subprocess.run(["rm", "-rf", path])
-    print(f"Deleted: {path}")
-    
-def run(channel, local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR):
-    
-    aws_sync_s3(local_dir, host, prefix)
-    paths = sorted((Path(local_dir + f"/{channel}").rglob("*.binlog")))
+def clean_up():
+    os.system(f"rm -rf binlogs")
+    print(f"Deleted: binlogs")
 
+    
+def process(channel, levels=10):
+    
+    paths = sorted((Path(f"/binlogs/{channel}").rglob("*.binlog")))
+    
     all_dfs = []
     for path in paths:
         meta = parse_metadata(path)
         snapshots = load_snapshots(path)
         
         if meta["channel"] == "orderbook":
-            rows = [normalize_orderbook(s, levels=LEVELS) for s in snapshots]
+            rows = [normalize_orderbook(s, levels) for s in snapshots]
             df = pandas.DataFrame(rows)
             df["timestamp"] = pandas.to_datetime(df["timestamp"])
         elif meta["channel"] == "trades":
@@ -98,10 +77,13 @@ def run(channel, local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTP
         
     if all_dfs:
         dfs = pandas.concat(all_dfs, ignore_index=True)
-        write_parquet_append(dfs, host, output_root)
-
+        write_parquet_append(dfs)
 
 if __name__ == "__main__":
-    run(channel="trades", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR)
-    run(channel="oderbook", local_dir=LOCAL_DIR, host=HOST, prefix=PREFIX, output_root=OUTPUT_DIR)
-    clean_up(path=LOCAL_DIR)
+    AWS_REGION="us-east-1"
+    S3_BUCKET="marketdata001-dev"
+    aws_sync_s3()
+    aws_mv_s3()
+    # process(channel="trades")
+    # process(channel="orderbook")
+    # clean_up()
