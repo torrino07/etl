@@ -1,25 +1,18 @@
-import os, json, struct, pandas, boto3
+import os, json, struct, pandas
 from pathlib import Path
+from datetime import datetime, timedelta
 from utils.DataParser import normalize_orderbook, normalize_trades
-
-def aws_sync_s3():
-    response = os.system(f"aws s3 sync s3://{S3_BUCKET}/binlogs/staging ./binlogs --exact-timestamps --region {AWS_REGION}")
-    print("Sync successful" if response == 0 else "Sync failed")
-
-def aws_mv_s3():
-    response = os.system(f"aws s3 mv s3://{S3_BUCKET}/binlogs/staging s3://{S3_BUCKET}/binlogs/processed --recursive --metadata-directive REPLACE --metadata '{{\"processed\":\"true\"}}'  --region {AWS_REGION}")
-    print("Sync successful" if response == 0 else "Mv failed")
     
 def parse_metadata(path):
     parts = Path(path).parts
     return {
-        "channel": parts[1],
-        "exchange": parts[2],
-        "market": parts[3],
-        "symbol": parts[4],
-        "date": parts[5],
-        "hour": parts[6],
-        "minute": parts[7],
+        "channel": parts[6],
+        "exchange": parts[7],
+        "market": parts[8],
+        "symbol": parts[9],
+        "date": parts[10],
+        "hour": parts[11],
+        "minute": parts[12],
     }
 
 def load_snapshots(path):
@@ -45,45 +38,47 @@ def write_parquet_append(df):
         engine="pyarrow"
         )
 
-def clean_up():
-    os.system(f"rm -rf binlogs")
-    print(f"Deleted: binlogs")
+def main():
+    
+    format = "%Y-%m-%d/%H/%M/"
+    current_date_time_obj = datetime.now() - timedelta(hours=2)
+    current_date_time = current_date_time_obj.strftime(format)
+    next_date_time = (current_date_time_obj + timedelta(minutes=1)).strftime(format)
+    paths = sorted(list(map(str, Path(PATH).rglob("*.binlog"))))
 
-    
-def process(channel, levels=10):
-    
-    paths = sorted((Path(f"/binlogs/{channel}").rglob("*.binlog")))
-    
-    all_dfs = []
+    all_dfs = {"trades":[], "orderbook": []}
     for path in paths:
-        meta = parse_metadata(path)
-        snapshots = load_snapshots(path)
+        if current_date_time not in path and next_date_time not in path:
+            meta = parse_metadata(path)
+            snapshots = load_snapshots(path)
+            channel = meta["channel"]
+            print(path)
+            
+            if channel == "orderbook":
+                rows = [normalize_orderbook(s, levels=10) for s in snapshots]
+                df = pandas.DataFrame(rows)
+                df["timestamp"] = pandas.to_datetime(df["timestamp"])
+                df = df.assign(**meta)
+                all_dfs["orderbook"].append(df)
+            elif channel == "trades":
+                rows = [normalize_trades(s) for s in snapshots]
+                df = pandas.DataFrame(rows)
+                df["timestamp"] = pandas.to_datetime(df["tradeTime"], unit="ms")
+                df = df.assign(**meta)
+                all_dfs["trades"].append(df)
+            else:
+                raise ValueError(f"Unknown channel: {channel}")
+            
+            #os.system(f"rm {path}")
         
-        if meta["channel"] == "orderbook":
-            rows = [normalize_orderbook(s, levels) for s in snapshots]
-            df = pandas.DataFrame(rows)
-            df["timestamp"] = pandas.to_datetime(df["timestamp"])
-        elif meta["channel"] == "trades":
-            rows = [normalize_trades(s) for s in snapshots]
-            df = pandas.DataFrame(rows)
-            df["timestamp"] = pandas.to_datetime(df["tradeTime"], unit="ms")
-        else:
-            raise ValueError(f"Unknown channel: {meta["channel"]}")
-        
-        for k, v in meta.items():
-            df[k] = v
-
-        all_dfs.append(df)
-        
-    if all_dfs:
-        dfs = pandas.concat(all_dfs, ignore_index=True)
-        write_parquet_append(dfs)
+    # dfs_trades = pandas.concat(all_dfs["trades"], ignore_index=True)
+    # dfs_orderbook = pandas.concat(all_dfs["orderbook"], ignore_index=True)
+    # write_parquet_append(dfs_trades)
+    # write_parquet_append(dfs_orderbook)
 
 if __name__ == "__main__":
     AWS_REGION="us-east-1"
     S3_BUCKET="marketdata001-dev"
-    aws_sync_s3()
-    aws_mv_s3()
-    # process(channel="trades")
-    # process(channel="orderbook")
-    # clean_up()
+    PATH="/Users/dorian/mnt/shared_data/binlogs"
+    main()
+    
