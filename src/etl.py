@@ -45,15 +45,14 @@ def main():
     current_date_time = current_date_time_obj.strftime(format)
     next_date_time = (current_date_time_obj + timedelta(minutes=1)).strftime(format)
     paths = sorted(list(map(str, Path(PATH).rglob("*.binlog"))))
-
+  
     all_dfs = {"trades":[], "orderbook": []}
     for path in paths:
         if current_date_time not in path and next_date_time not in path:
             meta = parse_metadata(path)
             snapshots = load_snapshots(path)
             channel = meta["channel"]
-            print(path)
-            
+
             if channel == "orderbook":
                 rows = [normalize_orderbook(s, levels=10) for s in snapshots]
                 df = pandas.DataFrame(rows)
@@ -69,12 +68,14 @@ def main():
             else:
                 raise ValueError(f"Unknown channel: {channel}")
             
-            #os.system(f"rm {path}")
+            os.system(f"rm {path}")
         
-    # dfs_trades = pandas.concat(all_dfs["trades"], ignore_index=True)
-    # dfs_orderbook = pandas.concat(all_dfs["orderbook"], ignore_index=True)
-    # write_parquet_append(dfs_trades)
-    # write_parquet_append(dfs_orderbook)
+    dfs_trades = pandas.concat(all_dfs["trades"], ignore_index=True)
+    dfs_orderbook = pandas.concat(all_dfs["orderbook"], ignore_index=True)
+    write_parquet_append(dfs_trades)
+    write_parquet_append(dfs_orderbook)
+    
+    os.system(f"rm {path}")
 
 if __name__ == "__main__":
     AWS_REGION="us-east-1"
