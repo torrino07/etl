@@ -74,8 +74,6 @@ def main():
     dfs_orderbook = pandas.concat(all_dfs["orderbook"], ignore_index=True)
     write_parquet_append(dfs_trades)
     write_parquet_append(dfs_orderbook)
-    
-    os.system(f"rm {path}")
 
 if __name__ == "__main__":
     AWS_REGION="us-east-1"
