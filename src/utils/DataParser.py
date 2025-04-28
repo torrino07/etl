@@ -1,5 +1,5 @@
 def normalize_orderbook(snap, levels):
-    flat = {"timestamp": snap["timestamp_ns"]}
+    flat = {"timestamp": snap["t"]}
     for i in range(levels):
         flat[f"bid_price_L{i+1}"] = float(snap["bids"][i][0])
         flat[f"bid_volume_L{i+1}"] = float(snap["bids"][i][1])
@@ -9,6 +9,7 @@ def normalize_orderbook(snap, levels):
 
 def normalize_trades(snap):
     return {
+        "timestamp": snap["t"],
         "eventTime": snap["eventTime"],
         "tradeId": snap["tradeId"],
         "price": float(snap["price"]),
