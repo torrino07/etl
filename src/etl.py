@@ -63,7 +63,7 @@ def main():
                 else:
                     raise ValueError(f"Unknown channel: {channel}")
                 
-            #Path(path).unlink(missing_ok=True)
+            Path(path).unlink(missing_ok=True)
             
     write_partitioned(pyarrow.Table.from_pylist(trades))
     write_partitioned(pyarrow.Table.from_pylist(orderbook))
