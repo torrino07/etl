@@ -1,4 +1,5 @@
-import os, json, struct, pandas
+import json, struct, pyarrow
+import pyarrow.parquet as pq
 from pathlib import Path
 from datetime import datetime, timedelta
 from utils.DataParser import normalize_orderbook, normalize_trades
@@ -29,13 +30,12 @@ def load_snapshots(path):
             snapshots.append(message)
     return snapshots
 
-def write_parquet_append(df):
-    df.to_parquet(
-        f"s3://{S3_BUCKET}/parquet", 
+def write_partitioned(table):
+    pq.write_to_dataset(
+        table,
+        root_path=f"s3://{S3_BUCKET}/parquet",
         partition_cols=["channel", "exchange", "market", "symbol", "date", "hour", "minute"],
-        index=False,
-        compression="snappy",
-        engine="pyarrow"
+        compression="snappy"
         )
 
 def main():
@@ -46,34 +46,27 @@ def main():
     next_date_time = (current_date_time_obj + timedelta(minutes=1)).strftime(format)
     paths = sorted(list(map(str, Path(PATH).rglob("*.binlog"))))
   
-    all_dfs = {"trades":[], "orderbook": []}
+    trades, orderbook = [], []
     for path in paths:
         if current_date_time not in path and next_date_time not in path:
             meta = parse_metadata(path)
             snapshots = load_snapshots(path)
             channel = meta["channel"]
-
-            if channel == "orderbook":
-                rows = [normalize_orderbook(s, levels=10) for s in snapshots]
-                df = pandas.DataFrame(rows)
-                df["timestamp"] = pandas.to_datetime(df["timestamp"])
-                df = df.assign(**meta)
-                all_dfs["orderbook"].append(df)
-            elif channel == "trades":
-                rows = [normalize_trades(s) for s in snapshots]
-                df = pandas.DataFrame(rows)
-                df["timestamp"] = pandas.to_datetime(df["tradeTime"], unit="ms")
-                df = df.assign(**meta)
-                all_dfs["trades"].append(df)
-            else:
-                raise ValueError(f"Unknown channel: {channel}")
             
-            os.system(f"rm {path}")
-        
-    dfs_trades = pandas.concat(all_dfs["trades"], ignore_index=True)
-    dfs_orderbook = pandas.concat(all_dfs["orderbook"], ignore_index=True)
-    write_parquet_append(dfs_trades)
-    write_parquet_append(dfs_orderbook)
+            for snap in snapshots:
+                if channel == "orderbook":
+                    rec = normalize_orderbook(snap, levels=10)
+                    orderbook.append({**rec, **meta})
+                elif channel == "trades":
+                    rec = normalize_trades(snap)
+                    trades.append({**rec, **meta})
+                else:
+                    raise ValueError(f"Unknown channel: {channel}")
+                
+            Path(path).unlink(missing_ok=True)
+            
+    write_partitioned(pyarrow.Table.from_pylist(trades))
+    write_partitioned(pyarrow.Table.from_pylist(orderbook))
 
 if __name__ == "__main__":
     AWS_REGION="us-east-1"
