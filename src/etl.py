@@ -24,7 +24,6 @@ def load_snapshots(path):
             if len(header) < 12:
                 break
             timestamp, length = struct.unpack("<QI", header)
-            print(timestamp, length)
             json_bytes = f.read(length)
             message = json.loads(json_bytes.decode("utf-8"))
             message["timestamp"] = timestamp
