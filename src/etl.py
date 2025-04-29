@@ -23,10 +23,11 @@ def load_snapshots(path):
             header = f.read(12)
             if len(header) < 12:
                 break
-            ts, length = struct.unpack("<QI", header)
+            timestamp, length = struct.unpack("<QI", header)
+            print(timestamp, length)
             json_bytes = f.read(length)
             message = json.loads(json_bytes.decode("utf-8"))
-            message["timestamp"] = ts
+            message["timestamp"] = timestamp
             snapshots.append(message)
     return snapshots
 
@@ -62,11 +63,10 @@ def main():
                     trades.append({**rec, **meta})
                 else:
                     raise ValueError(f"Unknown channel: {channel}")
-                
-            Path(path).unlink(missing_ok=True)
             
-    write_partitioned(pyarrow.Table.from_pylist(trades))
-    write_partitioned(pyarrow.Table.from_pylist(orderbook))
+    #         Path(path).unlink(missing_ok=True)
+    # write_partitioned(pyarrow.Table.from_pylist(trades))
+    # write_partitioned(pyarrow.Table.from_pylist(orderbook))
 
 if __name__ == "__main__":
     AWS_REGION="us-east-1"
