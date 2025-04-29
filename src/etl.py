@@ -23,10 +23,10 @@ def load_snapshots(path):
             header = f.read(12)
             if len(header) < 12:
                 break
-            timestamp_ns, length = struct.unpack("<QI", header)
+            ts, length = struct.unpack("<QI", header)
             json_bytes = f.read(length)
             message = json.loads(json_bytes.decode("utf-8"))
-            message["timestamp_ns"] = timestamp_ns
+            message["timestamp"] = ts
             snapshots.append(message)
     return snapshots
 
