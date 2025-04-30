@@ -33,7 +33,7 @@ def load_snapshots(path):
 def write_partitioned(table):
     pq.write_to_dataset(
         table,
-        root_path=f"s3://{S3_BUCKET}/parquet",
+        root_path=f"s3://{S3_BUCKET}/data",
         partition_cols=["channel", "exchange", "market", "symbol", "date", "hour", "minute"],
         compression="snappy"
         )
