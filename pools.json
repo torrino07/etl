@@ -1,0 +1,38 @@
+{
+  "0x2287a9620adcbf6250dc71be9ee9b2d3a1ec85a464fc6f5c06669e8d07b61bba": {
+    "feeTier": 100,
+    "liquidity": 68238490384025,
+    "tickSpacing": 1,
+    "symbol": "ETHUSDT",
+    "token0.decimals": 18,
+    "token0.id": "0x0000000000000000000000000000000000000000",
+    "token0.symbol": "ETH",
+    "token1.decimals": 6,
+    "token1.id": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "token1.symbol": "USDT"
+  },
+  "0x50b00c1a5a8e582ec808e97e71598cd135206a9f9c548eab2ed73659e7ee5fa8": {
+    "feeTier": 3000,
+    "liquidity": 500673538344710504,
+    "tickSpacing": 60,
+    "symbol": "ETHUSDT",
+    "token0.decimals": 18,
+    "token0.id": "0x0000000000000000000000000000000000000000",
+    "token0.symbol": "ETH",
+    "token1.decimals": 6,
+    "token1.id": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "token1.symbol": "USDT"
+  },
+  "0x72331fcb696b0151904c03584b66dc8365bc63f8a144d89a773384e3a579ca73": {
+    "feeTier": 500,
+    "liquidity": 1737054256593684568,
+    "tickSpacing": 10,
+    "symbol": "ETHUSDT",
+    "token0.decimals": 18,
+    "token0.id": "0x0000000000000000000000000000000000000000",
+    "token0.symbol": "ETH",
+    "token1.decimals": 6,
+    "token1.id": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "token1.symbol": "USDT"
+  }
+}
